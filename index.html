@@ -1,0 +1,64 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>LearnWebGL</title>
+    <style>
+        /* 移除边界 */
+        body {
+            border: 0;
+            margin: 0px;
+            background-color: white;
+        }
+
+        /* 设置宽度大小为视域大小 */
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+
+<body onload="main()">
+    <canvas id="canvas"></canvas>
+    <script id="vertex-shader-2d" type="notjs">
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+
+        uniform vec2 u_resolution;
+        //uniform mat4 u_projection;
+        varying vec2 v_texCoord;
+       
+        void main() {
+       
+            vec2 zeroToOne = a_position / u_resolution;
+            vec2 zeroToTwo = zeroToOne * 2.0;
+            vec2 clipSpace = zeroToTwo - 1.0;
+            gl_Position = vec4(clipSpace * vec2(1, -1), 0.0, 1.0);
+
+            v_texCoord = a_texCoord;
+        }
+       
+    </script>
+
+    <script id="fragment-shader-2d" type="notjs">
+        precision mediump float;
+
+        uniform sampler2D u_image;
+        // uniform vec2 u_imageSize;
+        // uniform float kernal[9];
+        // uniform float kernalWeight;
+        
+        varying vec2 v_texCoord;
+
+        void main() {
+            // vec2 onePixel = 1.0 / imageSize;
+            // gl_FragColor = texture2D(u_image, vec2(v_texCoord.x, 1.0 - v_texCoord.y));
+            gl_FragColor = vec4(1, 1, 1, 1);
+        }
+    </script>
+    <script src="script_ts.js"></script>
+</body>
+
+</html>
