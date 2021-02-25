@@ -32,8 +32,8 @@ function getProgectionMatrix(fov, aspect, near, far) {
 }
 function getClipMatrix(width, height) {
     return [
-        2 / width, 0, 0, 0,
-        0, -2 / height, 0, 0,
+        2 / width, 0, 0, -1,
+        0, -2 / height, 0, 1,
         0, 0, 1, 0,
         0, 0, 0, 1
     ];
