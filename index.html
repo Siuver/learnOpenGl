@@ -17,45 +17,86 @@
             height: 100vh;
             display: block;
         }
+
+        #uiContainer {
+            border: 2px;
+            border-color: brown;
+            position: fixed;
+            top: 0;
+            z-index: 9999;
+        }
     </style>
 </head>
 
 <body onload="main()">
     <canvas id="canvas"></canvas>
+    <div id="uiContainer">
+        <div id="ui"></div>
+    </div>
     <script id="vertex-shader-2d" type="notjs">
-        attribute vec2 a_position;
+        attribute vec3 a_position;
         attribute vec2 a_texCoord;
 
         uniform vec2 u_resolution;
-        //uniform mat4 u_projection;
+        uniform mat4 u_clipMat;
         varying vec2 v_texCoord;
        
         void main() {
-       
-            vec2 zeroToOne = a_position / u_resolution;
-            vec2 zeroToTwo = zeroToOne * 2.0;
-            vec2 clipSpace = zeroToTwo - 1.0;
-            gl_Position = vec4(clipSpace * vec2(1, -1), 0.0, 1.0);
+            vec4 position = vec4(a_position, 1.0);
+            position = u_clipMat * position;
+            position = position - vec4(1, -1,0,0);
+            gl_Position = position;
+            //gl_Position = vec4(a_position.x * 2.0 / u_resolution.x - 1.0, -a_position.y * 2.0 / u_resolution.y + 1.0, a_position.z, 1.0);
 
             v_texCoord = a_texCoord;
         }
-       
     </script>
 
     <script id="fragment-shader-2d" type="notjs">
         precision mediump float;
 
         uniform sampler2D u_image;
-        // uniform vec2 u_imageSize;
-        // uniform float kernal[9];
+        uniform vec2 u_imageSize;
+        uniform float u_kernal[9];
+        uniform float u_time;
         // uniform float kernalWeight;
-        
+
         varying vec2 v_texCoord;
 
         void main() {
-            // vec2 onePixel = 1.0 / imageSize;
-            // gl_FragColor = texture2D(u_image, vec2(v_texCoord.x, 1.0 - v_texCoord.y));
-            gl_FragColor = vec4(1, 1, 1, 1);
+            vec2 onePixel = 1.0 /u_imageSize;
+            vec4 fragColor = vec4(0, 0, 0, 0);
+            float weight = 0.0;
+            for (int j = -1; j <= 1; j++) {
+                for (int i = -1; i <= 1; i++) {
+                    vec2 texCoord = v_texCoord + onePixel * vec2(i, j);
+                    texCoord = vec2(texCoord.x, 1.0 - v_texCoord.y);
+                    fragColor += texture2D(u_image, texCoord) * kernal[(j + 1) * 3 + (i + 1)];
+                    weight += kernal[(j + 1) * 3 + (i + 1)];
+                }
+            }
+            if (weight <= 0.0) {
+                weight = 1.0;
+            }
+            fragColor = vec4((fragColor / weight).rgb, 1);
+            gl_FragColor = fragColor;
+        }
+    </script>
+
+    <script id="fragment-shader-2d-wave" type="notjs">
+        precision mediump float;
+
+        uniform sampler2D u_image;
+        uniform vec2 u_imageSize;
+        uniform float u_time;
+
+        varying vec2 v_texCoord;
+
+        void main() {
+            vec2 onePixel = 1.0 /u_imageSize;
+
+            vec2 uv = vec2(v_texCoord.x, v_texCoord.y + sin(u_time + v_texCoord.x * 10000000.0));
+            gl_FragColor = texture2D(u_image, uv);
         }
     </script>
     <script src="script_ts.js"></script>
