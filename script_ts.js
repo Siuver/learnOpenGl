@@ -24,18 +24,18 @@ function getProgectionMatrix(fov, aspect, near, far) {
     var right = top * aspect;
     var left = -right;
     return [
-        (2 * near) / (right - left), 0, (right + left) / (right - left), 0,
-        0, (2 * near) / (top - bottom), (top + bottom) / (top - bottom), 0,
-        0, 0, (near + far) / (near - far), (2 * near * far) / (near - far),
-        0, 0, -1, 0
+        (2 * near), 0, 0, 0,
+        0, (2 * near) / (top - bottom), 0, 0,
+        (right + left) / (right - left), (top + bottom) / (top - bottom), -1,
+        0, 0, (2 * near * far) / (near - far), 0
     ];
 }
 function getClipMatrix(width, height) {
     return [
-        2 / width, 0, 0, -1,
-        0, -2 / height, 0, 1,
+        2 / width, 0, 0, 0,
+        0, -2 / height, 0, 0,
         0, 0, 1, 0,
-        0, 0, 0, 1
+        -1, 1, 0, 1
     ];
 }
 var GLProgram = /** @class */ (function () {
@@ -163,17 +163,37 @@ function main() {
     if (!program.id)
         return;
     var vertices = [
-        541.5, 251.5, 0, 1.0, 1.0,
-        29.5, 251.5, 0, 0.0, 1.0,
-        29.5, 763.5, 0, 0.0, 0.0,
-        541.5, 763.5, 0, 1.0, 0.0
+        335.5, 457.5, 0, 1.0, 1.0,
+        235.5, 457.5, 0, 0.0, 1.0,
+        235.5, 557.5, 0, 0.0, 0.0,
+        335.5, 557.5, 0, 1.0, 0.0,
+        335.5, 457.5, 100, 1.0, 1.0,
+        235.5, 457.5, 100, 0.0, 1.0,
+        235.5, 557.5, 100, 0.0, 0.0,
+        335.5, 557.5, 100, 1.0, 0.0,
     ];
     var vbo = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
     var indices = [
+        // 上面
         0, 1, 2,
-        0, 2, 3
+        0, 2, 3,
+        // 下面
+        7, 6, 5,
+        7, 5, 4,
+        // 左面
+        2, 1, 5,
+        2, 5, 6,
+        // 右面
+        0, 3, 7,
+        0, 7, 4,
+        // 前面
+        3, 2, 6,
+        3, 6, 7,
+        // 后面
+        1, 0, 4,
+        1, 4, 5
     ];
     var ebo = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
@@ -196,6 +216,7 @@ function main() {
             program.activate();
             program.setUniformValue("u_resolution", width, height);
             program.setMatrix("u_clipMat", getClipMatrix(width, height));
+            program.setMatrix("u_projection", getProgectionMatrix(Math.PI / 4, width / height, 0.1, 1000));
             program.setUniformValue("u_imageSize", image.width, image.height);
             program.setUniformValue("u_time", Date.now() / 10000);
             // program.setUniformValue("u_kernal", kernals[select.options[select.selectedIndex].value]);

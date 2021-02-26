@@ -30,21 +30,92 @@ function getProgectionMatrix(fov: number, aspect: number, near: number, far: num
     let bottom = -top;
     let right = top * aspect;
     let left = -right;
+
     return [
-        (2 * near) / (right - left), 0, (right + left) / (right - left), 0,
-        0, (2 * near) / (top - bottom), (top + bottom) / (top - bottom), 0,
-        0, 0, (near + far) / (near - far), (2 * near * far) / (near - far),
-        0, 0, -1, 0
-    ];
+        (2 * near), 0, 0, 0,
+        0, (2 * near) / (top - bottom), 0, 0,
+        (right + left) / (right - left), (top + bottom) / (top - bottom), -1,
+        0, 0, (2 * near * far) / (near - far), 0
+    ]
 }
 
 function getClipMatrix(width: number, height: number): number[] {
     return [
-        2 / width, 0, 0, -1,
-        0, -2 / height, 0, 1,
+        2 / width, 0, 0, 0,
+        0, -2 / height, 0, 0,
         0, 0, 1, 0,
-        0, 0, 0, 1
+        -1, 1, 0, 1
     ]
+}
+
+class Matrix {
+    private _row: number;
+    private _col: number;
+    private _mat: number[];
+
+    public get mat(): number[] {
+        return this._mat;
+    }
+
+    public get row(): number {
+        return this._row;
+    }
+
+    public get col(): number {
+        return this._col;
+    }
+
+    constructor() {
+        this._mat = [];
+    }
+
+    public setSize(row: number, col: number) {
+        this._row = row;
+        this._col = col;
+    }
+
+    public setTo(mat: number[]): void {
+        this._mat = mat;
+    }
+
+    public getValue(row: number, col: number): number {
+        return this._mat[row * this._col + col];
+    }
+
+    public transpose(): void {
+        let row = this._col;
+        let col = this._row;
+
+        let newMat = [];
+        for (let _row = 0; _row < row; _row++) {
+            for (let _col = 0; _col < col; _col++) {
+                newMat.push(this._mat[_col * row + _row]);
+            }
+        }
+
+        this._row = row;
+        this._col = col;
+        this._mat = newMat;
+    }
+
+    public multiply(mat: Matrix): Matrix {
+        if (this._row !== mat.col) return null;
+
+        let newMat = new Matrix();
+        newMat.setSize(mat.row, this._col);
+
+        for (let i = 0; i < mat.row; i++) {
+            for (let j = 0; j < this._col; j++) {
+                let sum = 0;
+                for (let _ = 0; _ < this.row; _++) {
+                    sum += this.getValue(_, j) * mat.getValue(i, _);
+                }
+                newMat.mat.push(sum);
+            }
+        }
+
+        return newMat;
+    }
 }
 
 class GLProgram {
@@ -188,18 +259,43 @@ function main() {
     if (!program.id) return;
 
     let vertices = [
-        541.5, 251.5, 0, 1.0, 1.0,
-        29.5, 251.5, 0, 0.0, 1.0,
-        29.5, 763.5, 0, 0.0, 0.0,
-        541.5, 763.5, 0, 1.0, 0.0
+        335.5, 457.5, 0, 1.0, 1.0,
+        235.5, 457.5, 0, 0.0, 1.0,
+        235.5, 557.5, 0, 0.0, 0.0,
+        335.5, 557.5, 0, 1.0, 0.0,
+        335.5, 457.5, 100, 1.0, 1.0,
+        235.5, 457.5, 100, 0.0, 1.0,
+        235.5, 557.5, 100, 0.0, 0.0,
+        335.5, 557.5, 100, 1.0, 0.0,
     ];
     let vbo = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
     let indices = [
+        // 上面
         0, 1, 2,
-        0, 2, 3
+        0, 2, 3,
+
+        // 下面
+        7, 6, 5,
+        7, 5, 4,
+
+        // 左面
+        2, 1, 5,
+        2, 5, 6,
+
+        // 右面
+        0, 3, 7,
+        0, 7, 4,
+
+        // 前面
+        3, 2, 6,
+        3, 6, 7,
+
+        // 后面
+        1, 0, 4,
+        1, 4, 5
     ];
     let ebo = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
@@ -227,6 +323,7 @@ function main() {
             program.activate();
             program.setUniformValue("u_resolution", width, height);
             program.setMatrix("u_clipMat", getClipMatrix(width, height));
+            program.setMatrix("u_projection", getProgectionMatrix(Math.PI / 4, width / height, 0.1, 1000));
             program.setUniformValue("u_imageSize", image.width, image.height);
             program.setUniformValue("u_time", Date.now() / 10000);
 
