@@ -1,3 +1,16 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 function resize(canvas) {
     // var ratio = window.devicePixelRatio;
     var ratio = 1;
@@ -18,29 +31,149 @@ function createTexture(gl) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     return tex;
 }
-function getProgectionMatrix(fov, aspect, near, far) {
-    var top = near * Math.tan(fov / 2);
-    var bottom = -top;
-    var right = top * aspect;
-    var left = -right;
-    return [
-        (2 * near), 0, 0, 0,
-        0, (2 * near) / (top - bottom), 0, 0,
-        (right + left) / (right - left), (top + bottom) / (top - bottom), -1,
-        0, 0, (2 * near * far) / (near - far), 0
-    ];
-}
-function getClipMatrix(width, height) {
-    return [
-        2 / width, 0, 0, 0,
-        0, -2 / height, 0, 0,
-        0, 0, 1, 0,
-        -1, 1, 0, 1
-    ];
-}
+// class Matrix {
+//     private _row: number;
+//     private _col: number;
+//     private _mat: number[];
+//     public get mat(): number[] {
+//         return this._mat;
+//     }
+//     public get row(): number {
+//         return this._row;
+//     }
+//     public get col(): number {
+//         return this._col;
+//     }
+//     constructor() {
+//         this._mat = [];
+//     }
+//     public setSize(row: number, col: number) {
+//         this._row = row;
+//         this._col = col;
+//     }
+//     public setTo(mat: number[]): void {
+//         this._mat = mat;
+//     }
+//     // 因为webgl的矩阵是列主序的，所以计算时要把行跟列互换
+//     public getValue(row: number, col: number): number {
+//         return this._mat[col * this._col + row];
+//     }
+//     public transpose(): void {
+//         let row = this._col;
+//         let col = this._row;
+//         let newMat = [];
+//         for (let _row = 0; _row < row; _row++) {
+//             for (let _col = 0; _col < col; _col++) {
+//                 newMat.push(this._mat[_col * row + _row]);
+//             }
+//         }
+//         this._row = row;
+//         this._col = col;
+//         this._mat = newMat;
+//     }
+//     public multiply(mat: Matrix): Matrix {
+//         if (this._row !== mat.col) return null;
+//         let newMat = new Matrix();
+//         newMat.setSize(mat.row, this._col);
+//         for (let i = 0; i < mat.row; i++) {
+//             for (let j = 0; j < this._col; j++) {
+//                 let sum = 0;
+//                 for (let _ = 0; _ < this.row; _++) {
+//                     sum += this.getValue(_, j) * mat.getValue(i, _);
+//                 }
+//                 newMat.mat.push(sum);
+//             }
+//         }
+//         return newMat;
+//     }
+//     public static identiryMatrix(size: number): Matrix {
+//         let mat = new Matrix();
+//         mat.setSize(size, size);
+//         let index = 0;
+//         for (let i = 0; i < size * size; i++) {
+//             mat.mat.push(index++ % size === 0 ? 1 : 0);
+//         }
+//         return mat;
+//     }
+//     public static translateMatrix(dx: number, dy: number): Matrix {
+//     }
+// }
+var Matrix = /** @class */ (function () {
+    function Matrix() {
+    }
+    Matrix.identityMatrix = function () {
+        return [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ];
+    };
+    Matrix.translateMatrix = function (dx, dy) {
+        return [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            dx, dy, 0, 1
+        ];
+    };
+    Matrix.scaleMatrix = function (scaleX, scaleY) {
+        return [
+            scaleX, 0, 0, 0,
+            0, scaleY, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ];
+    };
+    Matrix.clipMatrix = function (width, height) {
+        return [
+            2 / width, 0, 0, 0,
+            0, -2 / height, 0, 0,
+            0, 0, 1, 0,
+            -1, 1, 0, 1
+        ];
+    };
+    Matrix.projectionMatrix = function (fov, aspect, near, far) {
+        var top = near * Math.tan(fov / 2);
+        var bottom = -top;
+        var right = top * aspect;
+        var left = -right;
+        return [
+            (2 * near), 0, 0, 0,
+            0, (2 * near) / (top - bottom), 0, 0,
+            (right + left) / (right - left), (top + bottom) / (top - bottom), -1,
+            0, 0, (2 * near * far) / (near - far), 0
+        ];
+    };
+    Matrix.multiplyMatrix = function (mat1, mat2) {
+        var size = Math.sqrt(mat1.length);
+        var newMat = [];
+        for (var i = 0; i < size; i++) {
+            for (var j = 0; j < size; j++) {
+                var sum = 0;
+                for (var k = 0; k < size; k++) {
+                    var value1 = mat1[k * size + j];
+                    var value2 = mat2[i * size + k];
+                    sum += value1 * value2;
+                }
+                newMat.push(sum);
+            }
+        }
+        return newMat;
+    };
+    return Matrix;
+}());
+var m3 = /** @class */ (function (_super) {
+    __extends(m3, _super);
+    function m3() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return m3;
+}(Array));
 var GLProgram = /** @class */ (function () {
     function GLProgram(gl, vsSrc, fsSrc) {
         this._gl = gl;
+        var m;
         var vertexShader = this.createShader(vsSrc, gl.VERTEX_SHADER);
         var fragmentShader = this.createShader(fsSrc, gl.FRAGMENT_SHADER);
         if (!vertexShader || !fragmentShader) {
@@ -214,9 +347,11 @@ function main() {
             gl.clearColor(0.2, 0.3, 0.3, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
             program.activate();
-            program.setUniformValue("u_resolution", width, height);
-            program.setMatrix("u_clipMat", getClipMatrix(width, height));
-            program.setMatrix("u_projection", getProgectionMatrix(Math.PI / 4, width / height, 0.1, 1000));
+            var clipMatrix = Matrix.clipMatrix(width, height);
+            program.setMatrix("u_clipMat", clipMatrix);
+            // program.setMatrix("u_projection", getProgectionMatrix(Math.PI / 4, width / height, 0.1, 1000));
+            var transformMatrix = Matrix.scaleMatrix(2, 1);
+            program.setMatrix("u_transform", transformMatrix);
             program.setUniformValue("u_imageSize", image.width, image.height);
             program.setUniformValue("u_time", Date.now() / 10000);
             // program.setUniformValue("u_kernal", kernals[select.options[select.selectedIndex].value]);

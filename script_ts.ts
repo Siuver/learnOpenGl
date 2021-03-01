@@ -25,95 +25,71 @@ function createTexture(gl: WebGLRenderingContext) {
     return tex;
 }
 
-function getProgectionMatrix(fov: number, aspect: number, near: number, far: number): number[] {
-    let top = near * Math.tan(fov / 2);
-    let bottom = -top;
-    let right = top * aspect;
-    let left = -right;
-
-    return [
-        (2 * near), 0, 0, 0,
-        0, (2 * near) / (top - bottom), 0, 0,
-        (right + left) / (right - left), (top + bottom) / (top - bottom), -1,
-        0, 0, (2 * near * far) / (near - far), 0
-    ]
-}
-
-function getClipMatrix(width: number, height: number): number[] {
-    return [
-        2 / width, 0, 0, 0,
-        0, -2 / height, 0, 0,
-        0, 0, 1, 0,
-        -1, 1, 0, 1
-    ]
-}
-
 class Matrix {
-    private _row: number;
-    private _col: number;
-    private _mat: number[];
-
-    public get mat(): number[] {
-        return this._mat;
+    public static identityMatrix(): number[] {
+        return [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ];
     }
 
-    public get row(): number {
-        return this._row;
+    public static translateMatrix(dx: number, dy: number): number[] {
+        return [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            dx, dy, 0, 1
+        ]
     }
 
-    public get col(): number {
-        return this._col;
+    public static scaleMatrix(scaleX: number, scaleY: number): number[] {
+        return [
+            scaleX, 0, 0, 0,
+            0, scaleY, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ];
     }
 
-    constructor() {
-        this._mat = [];
+    public static clipMatrix(width: number, height: number): number[] {
+        return [
+            2 / width, 0, 0, 0,
+            0, -2 / height, 0, 0,
+            0, 0, 1, 0,
+            -1, 1, 0, 1
+        ]
     }
 
-    public setSize(row: number, col: number) {
-        this._row = row;
-        this._col = col;
+    public static projectionMatrix(fov: number, aspect: number, near: number, far: number): number[] {
+        let top = near * Math.tan(fov / 2);
+        let bottom = -top;
+        let right = top * aspect;
+        let left = -right;
+
+        return [
+            (2 * near), 0, 0, 0,
+            0, (2 * near) / (top - bottom), 0, 0,
+            (right + left) / (right - left), (top + bottom) / (top - bottom), -1,
+            0, 0, (2 * near * far) / (near - far), 0
+        ]
     }
 
-    public setTo(mat: number[]): void {
-        this._mat = mat;
-    }
-
-    public getValue(row: number, col: number): number {
-        return this._mat[row * this._col + col];
-    }
-
-    public transpose(): void {
-        let row = this._col;
-        let col = this._row;
-
-        let newMat = [];
-        for (let _row = 0; _row < row; _row++) {
-            for (let _col = 0; _col < col; _col++) {
-                newMat.push(this._mat[_col * row + _row]);
-            }
-        }
-
-        this._row = row;
-        this._col = col;
-        this._mat = newMat;
-    }
-
-    public multiply(mat: Matrix): Matrix {
-        if (this._row !== mat.col) return null;
-
-        let newMat = new Matrix();
-        newMat.setSize(mat.row, this._col);
-
-        for (let i = 0; i < mat.row; i++) {
-            for (let j = 0; j < this._col; j++) {
+    public static multiplyMatrix(mat1: number[], mat2: number[]): number[] {
+        let size = Math.sqrt(mat1.length);
+        let newMat: number[] = [];
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
                 let sum = 0;
-                for (let _ = 0; _ < this.row; _++) {
-                    sum += this.getValue(_, j) * mat.getValue(i, _);
+                for (let k = 0; k < size; k++) {
+                    let value1 = mat1[k * size + j];
+                    let value2 = mat2[i * size + k];
+                    sum += value1 * value2;
                 }
-                newMat.mat.push(sum);
+                newMat.push(sum);
             }
         }
-
         return newMat;
     }
 }
@@ -312,6 +288,7 @@ function main() {
         let select: HTMLSelectElement = document.querySelector("#select");
 
         var interval = 1000 / FPS;
+
         setInterval(() => {
             resize(canvas);
             var width = canvas.width;
@@ -321,9 +298,11 @@ function main() {
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             program.activate();
-            program.setUniformValue("u_resolution", width, height);
-            program.setMatrix("u_clipMat", getClipMatrix(width, height));
-            program.setMatrix("u_projection", getProgectionMatrix(Math.PI / 4, width / height, 0.1, 1000));
+            let clipMatrix = Matrix.clipMatrix(width, height);
+            program.setMatrix("u_clipMat", clipMatrix);
+            // program.setMatrix("u_projection", getProgectionMatrix(Math.PI / 4, width / height, 0.1, 1000));
+            let transformMatrix = Matrix.scaleMatrix(2, 1);
+            program.setMatrix("u_transform", transformMatrix)
             program.setUniformValue("u_imageSize", image.width, image.height);
             program.setUniformValue("u_time", Date.now() / 10000);
 
